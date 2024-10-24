@@ -12,6 +12,9 @@ class Receiver:
         self.remote_host = None
         self.remote_port = None
 
+        self.expected_seq = 0
+        self.buffer = {}
+
     def send(self, message):
         self.log("Sent message %s" % json.dumps(message))
         self.socket.sendto(json.dumps(message).encode("utf-8"), (self.remote_host, self.remote_port))
@@ -43,14 +46,24 @@ class Receiver:
                 msg = self.recv(conn)
 
                 if msg:
-                    # Print out the data to stdout
-                    print(msg["data"], end='', flush=True)
+                    seq_number = msg['seq']
+
+                    if seq_number == self.expected_seq:
+                        # Print out the data to stdout
+                        print(msg["data"], end='', flush=True)
+                        self.expected_seq += 1
+
+                        while self.expected_seq in self.buffer:
+                            buffer_msg = self.buffer.pop(self.expected_seq)
+                            print(buffer_msg["data"], end='', flush=True)
+                            self.expected_seq += 1
+
+                    elif seq_number > self.expected_seq:
+                        self.buffer[seq_number] = msg
 
                     # Always send back an ack
-                    self.send({ "type": "ack", "seq": msg["seq"] })
+                    self.send({ "type": "ack", "seq": self.expected_seq - 1 })
 
-
-        return
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='receive data')

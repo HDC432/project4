@@ -3,6 +3,7 @@
 import argparse, socket, time, json, select, struct, sys, math
 
 DATA_SIZE = 1375
+TIMEOUT = 1.0
 
 class Sender:
     def __init__(self, host, port):
@@ -11,7 +12,12 @@ class Sender:
         self.log("Sender starting up using port %s" % self.port)
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.socket.bind(('0.0.0.0', 0))
-        self.waiting = False
+
+        self.window_size = 10
+        self.base = 0
+        self.next_seq_number = 0
+        self.window = {}
+        self.last_transmit = time.time()
 
         self.remote_host = None
         self.remote_port = None
@@ -23,6 +29,8 @@ class Sender:
     def send(self, message):
         self.log("Sending message '%s'" % json.dumps(message))
         self.socket.sendto(json.dumps(message).encode("utf-8"), (self.host, self.port))
+        self.window[message["seq"]] = message
+        self.last_transmit = time.time()
 
     def recv(self, socket):
         data, addr = socket.recvfrom(65535)
@@ -37,33 +45,47 @@ class Sender:
             self.log("Error:  Received response from unexpected remote; ignoring")
             return None
         else:
+            ack = json.loads(data.decode("utf-8"))
             self.log("Received message %s" % data)
-            return json.loads(data.decode("utf-8"))
+            return ack
 
     def run(self):
-        seq = 0
+        EOF = False
+
         while True:
-            sockets = [self.socket, sys.stdin] if not self.waiting else [self.socket]
+            while not EOF and self.next_seq_number < self.window_size + self.base:
+                data = sys.stdin.read(DATA_SIZE)
+                if not data:
+                    self.log("Done!")
+                    EOF = True
+                    break
 
-            socks = select.select(sockets, [], [], 0.1)[0]
-            for conn in socks:
-                if conn == self.socket:
-                    data = self.recv(conn)
+                msg = {"type": "msg", "data": data, "seq": self.next_seq_number}
+                self.send(msg)
+                self.next_seq_number += 1
 
-                    if data:
-                        self.waiting = False
-                elif conn == sys.stdin:
-                    data = sys.stdin.read(DATA_SIZE)
-                    if len(data) == 0:
-                        self.log("All done!")
-                        sys.exit(0)
+            socks = select.select([self.socket], [], [], 0.1)[0]
+            if self.socket in socks:
+                ack = self.recv(self.socket)
+                if ack and ack["seq"] >= self.base:
+                    for seq in list(self.window.keys()):
+                        if seq <= ack["seq"]:
+                            del self.window[seq]
+                    self.base = ack["seq"] + 1
+                    self.last_transmit = time.time()
 
-                    msg = { "type": "msg", "data": data, "seq": seq }
-                    self.send(msg)
-                    self.waiting = True
-                    seq += 1
+            # Check for timeout
+            if self.window and time.time() - self.last_transmit > TIMEOUT:
+                self.log(f"Time out! Resending from sequence number{self.base}")
+                for seq in range(self.base, self.next_seq_number):
+                    if seq in self.window:
+                        self.send(self.window[seq])
+                self.last_transmit = time.time()
+            
+            if EOF and not self.window:
+                self.log("All packets have been acknowledged.")
+                sys.exit(0)
 
-        return
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='send data')
