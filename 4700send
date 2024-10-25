@@ -1,1 +1,96 @@
-4700send.python
+#!/usr/bin/env -S python3 -u
+
+import argparse, socket, time, json, select, struct, sys, math
+
+DATA_SIZE = 1375
+TIMEOUT = 1.0
+
+class Sender:
+    def __init__(self, host, port):
+        self.host = host
+        self.port = int(port)
+        self.log("Sender starting up using port %s" % self.port)
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.socket.bind(('0.0.0.0', 0))
+
+        self.window_size = 10
+        self.base = 0
+        self.next_seq_number = 0
+        self.window = {}
+        self.last_transmit = time.time()
+
+        self.remote_host = None
+        self.remote_port = None
+
+    def log(self, message):
+        sys.stderr.write(message + "\n")
+        sys.stderr.flush()
+
+    def send(self, message):
+        self.log("Sending message '%s'" % json.dumps(message))
+        self.socket.sendto(json.dumps(message).encode("utf-8"), (self.host, self.port))
+        self.window[message["seq"]] = message
+        self.last_transmit = time.time()
+
+    def recv(self, socket):
+        data, addr = socket.recvfrom(65535)
+
+        # Grab the remote host/port if we don't already have it
+        if self.remote_host is None:
+            self.remote_host = addr[0]
+            self.remote_port = addr[1]
+
+        # Make sure we're talking to the same remote host
+        if addr != (self.remote_host, self.remote_port):
+            self.log("Error:  Received response from unexpected remote; ignoring")
+            return None
+        else:
+            ack = json.loads(data.decode("utf-8"))
+            self.log("Received message %s" % data)
+            return ack
+
+    def run(self):
+        EOF = False
+
+        while True:
+            while not EOF and self.next_seq_number < self.window_size + self.base:
+                data = sys.stdin.read(DATA_SIZE)
+                if not data:
+                    self.log("Done!")
+                    EOF = True
+                    break
+
+                msg = {"type": "msg", "data": data, "seq": self.next_seq_number}
+                self.send(msg)
+                self.next_seq_number += 1
+
+            socks = select.select([self.socket], [], [], 0.1)[0]
+            if self.socket in socks:
+                ack = self.recv(self.socket)
+                if ack and ack["seq"] >= self.base:
+                    for seq in list(self.window.keys()):
+                        if seq <= ack["seq"]:
+                            del self.window[seq]
+                    self.base = ack["seq"] + 1
+                    self.last_transmit = time.time()
+
+            # Check for timeout
+            if self.window and time.time() - self.last_transmit > TIMEOUT:
+                self.log(f"Time out! Resending from sequence number{self.base}")
+                for seq in range(self.base, self.next_seq_number):
+                    if seq in self.window:
+                        self.send(self.window[seq])
+                self.last_transmit = time.time()
+            
+            if EOF and not self.window:
+                self.log("All packets have been acknowledged.")
+                sys.exit(0)
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='send data')
+    parser.add_argument('host', type=str, help="Remote host to connect to")
+    parser.add_argument('port', type=int, help="UDP port number to connect to")
+    args = parser.parse_args()
+    sender = Sender(args.host, args.port)
+    sender.run()
