@@ -1,6 +1,6 @@
 #!/usr/bin/env -S python3 -u
 
-import argparse, socket, time, json, select, struct, sys, math
+import argparse, socket, time, json, select, struct, sys, math, hashlib
 
 DATA_SIZE = 1375
 TIMEOUT = 1.0
@@ -45,8 +45,12 @@ class Sender:
             self.log("Error:  Received response from unexpected remote; ignoring")
             return None
         else:
-            ack = json.loads(data.decode("utf-8"))
-            self.log("Received message %s" % data)
+            ack = ""
+            try:
+                ack = json.loads(data.decode("utf-8"))
+                self.log("Received message %s" % data)
+            except Exception:
+                ack = ""
             return ack
 
     def run(self):
@@ -59,8 +63,8 @@ class Sender:
                     self.log("Done!")
                     EOF = True
                     break
-
-                msg = {"type": "msg", "data": data, "seq": self.next_seq_number}
+                checksum = hashlib.md5(data.encode('utf-8')).hexdigest()
+                msg = {"type": "msg", "data": data, "seq": self.next_seq_number, "checksum":checksum}
                 self.send(msg)
                 self.next_seq_number += 1
 

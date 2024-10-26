@@ -1,6 +1,6 @@
 #!/usr/bin/env -S python3 -u
 
-import argparse, socket, time, json, select, struct, sys, math
+import argparse, socket, time, json, select, struct, sys, math, hashlib
 
 class Receiver:
     def __init__(self):
@@ -44,8 +44,12 @@ class Receiver:
             socks = select.select([self.socket], [], [])[0]
             for conn in socks:
                 msg = self.recv(conn)
-
+                
                 if msg:
+                    receivedChecksum = msg["checksum"]
+                    calculatedChecksum = hashlib.md5(msg["data"].encode('utf-8')).hexdigest()
+                    if receivedChecksum != calculatedChecksum:
+                        continue
                     seq_number = msg['seq']
 
                     if seq_number == self.expected_seq:
