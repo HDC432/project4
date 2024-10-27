@@ -19,6 +19,7 @@ class Sender:
         self.base = 0
         self.next_seq_number = 0
         self.window = {}
+        self.sent_times = {}
         self.last_transmit = time.time()
         self.packets_sent = 0
 
@@ -30,6 +31,8 @@ class Sender:
         self.remote_host = None
         self.remote_port = None
 
+        self.timeout = TIMEOUT
+
     def log(self, message):
         sys.stderr.write(message + "\n")
         sys.stderr.flush()
@@ -39,7 +42,9 @@ class Sender:
         payload = json.dumps(message).encode("utf-8")
         checksum = hashlib.md5(payload).hexdigest()
         self.socket.sendto(checksum.encode("utf-8") + payload, (self.host, self.port))
-        self.window[message["seq"]] = message
+        seq = message["seq"]
+        self.window[seq] = message
+        self.sent_times[seq] = time.time()
         self.last_transmit = time.time()
 
     def recv(self, socket):
@@ -59,7 +64,12 @@ class Sender:
             try:
                 ack = json.loads(data.decode("utf-8"))
                 self.log("Received message %s" % data)
-            except Exception:
+                seq = ack["seq"]
+                if seq == self.base and seq in self.sent_times:
+                    delay = time.time() -self.sent_times[seq]
+                    self.timeout = (0.85*self.timeout) + (0.15*delay)
+                    self.log("new timeout: " +  str(self.timeout))
+            except Exception as e:
                 ack = ""
             return ack
 
@@ -104,7 +114,7 @@ class Sender:
 
 
             # Check for timeout
-            if self.window and time.time() - self.last_transmit > TIMEOUT:
+            if self.window and ((time.time() - self.last_transmit) > (self.timeout*1.5)):
                 self.log(f"Time out! Resending from sequence number{self.base}")
                 for seq in range(self.base, self.next_seq_number):
                     if seq in self.window:
