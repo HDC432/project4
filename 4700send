@@ -25,6 +25,7 @@ class Sender:
         # Code for congestion control
         self.congestion_window = 1
         self.sshthresh = 100
+        self.dup_count = 0
 
         self.remote_host = None
         self.remote_port = None
@@ -91,6 +92,14 @@ class Sender:
                     self.last_transmit = time.time()
                     if self.congestion_window < self.sshthresh:
                         self.congestion_window +=1
+                else:
+                    self.dup_count += 1
+                    if self.dup_count >= 3:
+                        self.dup_count = 0
+                        self.send(self.window[self.base])
+                        self.sshthresh  = self.congestion_window// 2
+                        self.congestion_window = self.sshthresh + 3
+
 
             # Check for timeout
             if self.window and time.time() - self.last_transmit > TIMEOUT:
