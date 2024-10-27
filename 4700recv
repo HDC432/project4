@@ -33,7 +33,15 @@ class Receiver:
             return None
         else:
             self.log("Received message %s" % data.decode("utf-8"))
-            return json.loads(data.decode("utf-8"))
+            data = data.decode("utf-8")
+            payload = data[32:]
+            checksum = data[0:32]
+            calculatedChecksum = hashlib.md5(payload.encode("utf-8")).hexdigest()
+            if checksum != calculatedChecksum:
+                return None
+            else:
+                data =  json.loads(payload)
+                return data
 
     def log(self, message):
         sys.stderr.write(message + "\n")
@@ -46,10 +54,7 @@ class Receiver:
                 msg = self.recv(conn)
                 
                 if msg:
-                    receivedChecksum = msg["checksum"]
-                    calculatedChecksum = hashlib.md5(msg["data"].encode('utf-8')).hexdigest()
-                    if receivedChecksum != calculatedChecksum:
-                        continue
+                    
                     seq_number = msg['seq']
 
                     if seq_number == self.expected_seq:

@@ -2,7 +2,7 @@
 
 import argparse, socket, time, json, select, struct, sys, math, hashlib
 
-DATA_SIZE = 1200 
+DATA_SIZE = 1340
 # Maybe we need to adjust data_size: packets are being dropped in low bandwidth
 
 TIMEOUT = 1.0
@@ -36,7 +36,9 @@ class Sender:
 
     def send(self, message):
         self.log("Sending message '%s'" % json.dumps(message))
-        self.socket.sendto(json.dumps(message).encode("utf-8"), (self.host, self.port))
+        payload = json.dumps(message).encode("utf-8")
+        checksum = hashlib.md5(payload).hexdigest()
+        self.socket.sendto(checksum.encode("utf-8") + payload, (self.host, self.port))
         self.window[message["seq"]] = message
         self.last_transmit = time.time()
 
@@ -71,8 +73,8 @@ class Sender:
                     self.log("Done!")
                     EOF = True
                     break
-                checksum = hashlib.md5(data.encode('utf-8')).hexdigest()
-                msg = {"type": "msg", "data": data, "seq": self.next_seq_number, "checksum":checksum}
+                
+                msg = {"type": "msg", "data": data, "seq": self.next_seq_number}
                 self.packets_sent+=1
                 if self.congestion_window >= self.sshthresh:
                     if self.packets_sent >= self.congestion_window:
