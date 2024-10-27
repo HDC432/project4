@@ -2,7 +2,9 @@
 
 import argparse, socket, time, json, select, struct, sys, math, hashlib
 
-DATA_SIZE = 1375
+DATA_SIZE = 1200 
+# Maybe we need to adjust data_size: packets are being dropped in low bandwidth
+
 TIMEOUT = 1.0
 
 class Sender:
@@ -18,11 +20,11 @@ class Sender:
         self.next_seq_number = 0
         self.window = {}
         self.last_transmit = time.time()
-
+        self.packets_sent = 0
 
         # Code for congestion control
         self.congestion_window = 1
-        self.sshthresh = 1
+        self.sshthresh = 100
 
         self.remote_host = None
         self.remote_port = None
@@ -70,6 +72,11 @@ class Sender:
                     break
                 checksum = hashlib.md5(data.encode('utf-8')).hexdigest()
                 msg = {"type": "msg", "data": data, "seq": self.next_seq_number, "checksum":checksum}
+                self.packets_sent+=1
+                if self.congestion_window >= self.sshthresh:
+                    if self.packets_sent >= self.congestion_window:
+                        self.packets_sent -= self.congestion_window
+                        self.congestion_window+=1
                 self.send(msg)
                 self.next_seq_number += 1
 
@@ -82,6 +89,8 @@ class Sender:
                             del self.window[seq]
                     self.base = ack["seq"] + 1
                     self.last_transmit = time.time()
+                    if self.congestion_window < self.sshthresh:
+                        self.congestion_window +=1
 
             # Check for timeout
             if self.window and time.time() - self.last_transmit > TIMEOUT:
@@ -90,6 +99,9 @@ class Sender:
                     if seq in self.window:
                         self.send(self.window[seq])
                 self.last_transmit = time.time()
+                self.sshthresh //= 2
+                self.congestion_window = 1
+
             
             if EOF and not self.window:
                 self.log("All packets have been acknowledged.")
