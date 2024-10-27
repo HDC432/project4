@@ -19,6 +19,11 @@ class Sender:
         self.window = {}
         self.last_transmit = time.time()
 
+
+        # Code for congestion control
+        self.congestion_window = 1
+        self.sshthresh = 1
+
         self.remote_host = None
         self.remote_port = None
 
@@ -57,7 +62,7 @@ class Sender:
         EOF = False
 
         while True:
-            while not EOF and self.next_seq_number < self.window_size + self.base:
+            while not EOF and self.next_seq_number < min(self.window_size,self.congestion_window) + self.base:
                 data = sys.stdin.read(DATA_SIZE)
                 if not data:
                     self.log("Done!")
