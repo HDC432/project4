@@ -34,9 +34,9 @@ class Receiver:
         else:
             self.log("Received message %s" % data.decode("utf-8"))
             data = data.decode("utf-8")
-            payload = data[32:]
-            checksum = data[0:32]
-            calculatedChecksum = hashlib.md5(payload.encode("utf-8")).hexdigest()
+            payload = data[10:]
+            checksum = data[0:10]
+            calculatedChecksum = hashlib.md5(payload.encode("utf-8")).hexdigest()[:10]
             if checksum != calculatedChecksum:
                 return None
             else:

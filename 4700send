@@ -2,7 +2,7 @@
 
 import argparse, socket, time, json, select, struct, sys, math, hashlib
 
-DATA_SIZE = 1340
+DATA_SIZE = 1360
 # Maybe we need to adjust data_size: packets are being dropped in low bandwidth
 
 TIMEOUT = 1.0
@@ -40,7 +40,7 @@ class Sender:
     def send(self, message):
         self.log("Sending message '%s'" % json.dumps(message))
         payload = json.dumps(message).encode("utf-8")
-        checksum = hashlib.md5(payload).hexdigest()
+        checksum = hashlib.md5(payload).hexdigest()[:10]
         self.socket.sendto(checksum.encode("utf-8") + payload, (self.host, self.port))
         seq = message["seq"]
         self.window[seq] = message
@@ -67,7 +67,7 @@ class Sender:
                 seq = ack["seq"]
                 if seq == self.base and seq in self.sent_times:
                     delay = time.time() -self.sent_times[seq]
-                    self.timeout = (0.85*self.timeout) + (0.15*delay)
+                    self.timeout = (0.80*self.timeout) + (0.20*delay)
                     self.log("new timeout: " +  str(self.timeout))
             except Exception as e:
                 ack = ""
