@@ -114,11 +114,12 @@ class Sender:
 
 
             # Check for timeout
-            if self.window and ((time.time() - self.last_transmit) > (self.timeout*1.5)):
+            if self.window and ((time.time() - self.last_transmit) > (self.timeout)):
                 self.log(f"Time out! Resending from sequence number{self.base}")
-                for seq in range(self.base, self.next_seq_number):
-                    if seq in self.window:
-                        self.send(self.window[seq])
+                # for seq in range(self.base, self.next_seq_number):
+                #     if seq in self.window:
+                #         self.send(self.window[seq])
+                self.send(self.window[seq])
                 self.last_transmit = time.time()
                 self.sshthresh //= 2
                 self.congestion_window = 1
