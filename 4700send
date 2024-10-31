@@ -2,7 +2,7 @@
 
 import argparse, socket, time, json, select, struct, sys, math, hashlib
 
-DATA_SIZE = 1360
+DATA_SIZE = 1470
 # Maybe we need to adjust data_size: packets are being dropped in low bandwidth
 
 TIMEOUT = 1.0
