@@ -58,18 +58,22 @@ class Sender:
             self.log("Error:  Received response from unexpected remote; ignoring")
             return None
         else:
-            ack = ""
-            try:
-                ack = json.loads(data.decode("utf-8"))
-                self.log("Received message %s" % data)
-                seq = ack["seq"]
-                if seq == self.base and seq in self.sent_times:
-                    delay = time.time() -self.sent_times[seq]
-                    self.timeout = (0.80*self.timeout) + (0.20*delay)
-                    self.log("new timeout: " +  str(self.timeout))
-            except Exception as e:
-                ack = ""
-            return ack
+            data = bytearray(data)
+            if (len(data) != 2):
+                self.log("Error:  Invalid ack, dropping")
+                return
+            else:
+                
+                checksum = data[0]
+                calculatedChecksum = data[1] + 1
+                if (checksum != calculatedChecksum):
+                    self.log("Error:  Corrupted ack, dropping")
+                else:
+                    return{
+                        "seq": int(data[1])
+                    }
+                
+
 
     def run(self):
         EOF = False

@@ -16,8 +16,8 @@ class Receiver:
         self.buffer = {}
 
     def send(self, message):
-        self.log("Sent message %s" % json.dumps(message))
-        self.socket.sendto(json.dumps(message).encode("utf-8"), (self.remote_host, self.remote_port))
+        self.log("Sent message %s" % message)
+        self.socket.sendto(message, (self.remote_host, self.remote_port))
 
     def recv(self, socket):
         data, addr = socket.recvfrom(65535)
@@ -74,9 +74,8 @@ class Receiver:
                         self.buffer[seq_number] = msg
 
                     # Always send back an ack
-                    # response = (self.expected_seq-1).to_bytes(2,"big")
-                    # checksum = 
-                    self.send({ "type": "ack", "seq": self.expected_seq - 1 })
+                    seq = self.expected_seq-1
+                    self.send(bytearray([seq+1, seq]))
 
 
 if __name__ == "__main__":
