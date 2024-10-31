@@ -32,16 +32,19 @@ class Receiver:
             self.log("Error:  Received response from unexpected remote; ignoring")
             return None
         else:
-            self.log("Received message %s" % data.decode("utf-8"))
-            data = data.decode("utf-8")
-            payload = data[10:]
             checksum = data[0:10]
-            calculatedChecksum = hashlib.md5(payload.encode("utf-8")).hexdigest()[:10]
+            seq = int.from_bytes(data[10:18], "big")
+            payload = data[18:].decode("utf-8")
+            
+            self.log("Received message %d %s" % (seq,payload))
+            calculatedChecksum = hashlib.md5(data[10:]).digest()[:10]
             if checksum != calculatedChecksum:
                 return None
             else:
-                data =  json.loads(payload)
-                return data
+                return {
+                    "data": payload,
+                    "seq": seq
+                }
 
     def log(self, message):
         sys.stderr.write(message + "\n")

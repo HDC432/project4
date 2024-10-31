@@ -37,12 +37,10 @@ class Sender:
         sys.stderr.write(message + "\n")
         sys.stderr.flush()
 
-    def send(self, message):
-        self.log("Sending message '%s'" % json.dumps(message))
-        payload = json.dumps(message).encode("utf-8")
-        checksum = hashlib.md5(payload).hexdigest()[:10]
-        self.socket.sendto(checksum.encode("utf-8") + payload, (self.host, self.port))
-        seq = message["seq"]
+    def send(self, message, seq):
+        self.log("Sending message '%s'" % message)
+        checksum = hashlib.md5(message).digest()
+        self.socket.sendto(checksum[:10] + message, (self.host, self.port))
         self.window[seq] = message
         self.sent_times[seq] = time.time()
         self.last_transmit = time.time()
@@ -84,13 +82,14 @@ class Sender:
                     EOF = True
                     break
                 
-                msg = {"type": "msg", "data": data, "seq": self.next_seq_number}
+                # msg = {"type": "msg", "data": data, "seq": self.next_seq_number}
+                msg = self.next_seq_number.to_bytes(8, "big") + data.encode("utf-8")
                 self.packets_sent+=1
                 if self.congestion_window >= self.sshthresh:
                     if self.packets_sent >= self.congestion_window:
                         self.packets_sent -= self.congestion_window
                         self.congestion_window+=1
-                self.send(msg)
+                self.send(msg, self.next_seq_number)
                 self.next_seq_number += 1
 
             socks = select.select([self.socket], [], [], 0.1)[0]
@@ -108,7 +107,7 @@ class Sender:
                     self.dup_count += 1
                     if self.dup_count >= 3:
                         self.dup_count = 0
-                        self.send(self.window[self.base])
+                        self.send(self.window[self.base], self.base)
                         self.sshthresh  = self.congestion_window// 2
                         self.congestion_window = self.sshthresh + 3
 
@@ -119,7 +118,7 @@ class Sender:
                 self.last_transmit = time.time()
                 self.sshthresh //= 2
                 self.congestion_window = 1
-                self.send(self.window[self.base])
+                self.send(self.window[self.base], self.base)
                 # for seq in range(self.base, self.next_seq_number):
                 #     if seq in self.window:
                 #         self.send(self.window[seq])
