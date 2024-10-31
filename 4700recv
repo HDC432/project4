@@ -74,6 +74,8 @@ class Receiver:
                         self.buffer[seq_number] = msg
 
                     # Always send back an ack
+                    # response = (self.expected_seq-1).to_bytes(2,"big")
+                    # checksum = 
                     self.send({ "type": "ack", "seq": self.expected_seq - 1 })
 
 
