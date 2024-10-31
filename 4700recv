@@ -33,8 +33,8 @@ class Receiver:
             return None
         else:
             checksum = data[0:10]
-            seq = int.from_bytes(data[10:18], "big")
-            payload = data[18:].decode("utf-8")
+            seq = int.from_bytes(data[10:12], "big")
+            payload = data[12:].decode("utf-8")
             
             self.log("Received message %d %s" % (seq,payload))
             calculatedChecksum = hashlib.md5(data[10:]).digest()[:10]
