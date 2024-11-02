@@ -45,11 +45,13 @@ class Receiver:
             self.log("Error:  Received response from unexpected remote")
             return None
         else:
+            # Get the checksum, sequence number, and payload.
             checksum = data[0:10]
             seq = int.from_bytes(data[10:12], "big")
             payload = data[12:].decode("utf-8")
-            
             self.log("Received message %d %s" % (seq,payload))
+
+            # Compare received checksum with calculatedChecksum to verify integrity
             calculatedChecksum = hashlib.md5(data[10:]).digest()[:10]
             if checksum != calculatedChecksum:
                 return None
