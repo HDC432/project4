@@ -2,19 +2,21 @@
 
 import argparse, socket, time, json, select, struct, sys, math, hashlib
 
+# Set maximum data size per packet
 DATA_SIZE = 1470
-# Maybe we need to adjust data_size: packets are being dropped in low bandwidth
-
+# Timeout interval for retransmission
 TIMEOUT = 1.0
 
 class Sender:
     def __init__(self, host, port):
+        # Initialize Sender class with host, port, socket
         self.host = host
         self.port = int(port)
         self.log("Sender starting up using port %s" % self.port)
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.socket.bind(('0.0.0.0', 0))
 
+        # Code for window and sequence management
         self.window_size = 10
         self.base = 0
         self.next_seq_number = 0
@@ -28,34 +30,43 @@ class Sender:
         self.sshthresh = 100
         self.dup_count = 0
 
+        # Initialize remote host's address and port
         self.remote_host = None
         self.remote_port = None
 
         self.timeout = TIMEOUT
 
+
+    # Function to print messages to stderr for debugging
     def log(self, message):
         sys.stderr.write(message + "\n")
         sys.stderr.flush()
 
+
+    # Function to send data packets with checksum and sequence number
     def send(self, message, seq):
         self.log("Sending message '%s'" % message)
+
+        # Calculate checksum and add it to packet
         checksum = hashlib.md5(message).digest()
         self.socket.sendto(checksum[:10] + message, (self.host, self.port))
         self.window[seq] = message
         self.sent_times[seq] = time.time()
         self.last_transmit = time.time()
 
+
+    # Function to receive and validate ACK packets
     def recv(self, socket):
         data, addr = socket.recvfrom(65535)
 
-        # Grab the remote host/port if we don't already have it
+        # Set remote address if it's None
         if self.remote_host is None:
             self.remote_host = addr[0]
             self.remote_port = addr[1]
 
-        # Make sure we're talking to the same remote host
+        # Ignore invalid ACK packets
         if addr != (self.remote_host, self.remote_port):
-            self.log("Error:  Received response from unexpected remote; ignoring")
+            self.log("Error:  Received response from unexpected remote")
             return None
         else:
             data = bytearray(data)
@@ -63,7 +74,6 @@ class Sender:
                 self.log("Error:  Invalid ack, dropping")
                 return
             else:
-                
                 checksum = data[0]
                 calculatedChecksum = data[1] + 1
                 if (checksum != calculatedChecksum):
@@ -74,10 +84,9 @@ class Sender:
                     }
                 
 
-
+    # Main loop to send data and handle acknowledgements
     def run(self):
         EOF = False
-
         while True:
             while not EOF and self.next_seq_number < min(self.window_size,self.congestion_window) + self.base:
                 data = sys.stdin.read(DATA_SIZE)
@@ -115,7 +124,6 @@ class Sender:
                         self.sshthresh  = self.congestion_window// 2
                         self.congestion_window = self.sshthresh + 3
 
-
             # Check for timeout
             if self.window and ((time.time() - self.last_transmit) > (self.timeout*1.5)):
                 self.log(f"Time out! Resending from sequence number{self.base}")
@@ -126,8 +134,6 @@ class Sender:
                 for seq in range(self.base, self.next_seq_number):
                     if seq in self.window:
                         self.send(self.window[seq], seq)
-                
-
             
             if EOF and not self.window:
                 self.log("All packets have been acknowledged.")

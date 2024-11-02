@@ -4,32 +4,45 @@ import argparse, socket, time, json, select, struct, sys, math, hashlib
 
 class Receiver:
     def __init__(self):
+        # Initialize the socket
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.socket.bind(('0.0.0.0', 0))
         self.port = self.socket.getsockname()[1]
         self.log("Bound to port %d" % self.port)
 
+        # Initialize remote host's address and port
         self.remote_host = None
         self.remote_port = None
 
+        # Initialize sequence and buffer for received data
         self.expected_seq = 0
         self.buffer = {}
 
+
+     # Function to print messages to stderr for debugging
+    def log(self, message):
+        sys.stderr.write(message + "\n")
+        sys.stderr.flush()
+
+
+    # Function to send ACK message to sender
     def send(self, message):
         self.log("Sent message %s" % message)
         self.socket.sendto(message, (self.remote_host, self.remote_port))
 
+
+    # Function to receive data from a certain socket
     def recv(self, socket):
         data, addr = socket.recvfrom(65535)
 
-        # Grab the remote host/port if we don't already have it
+        # Set remote address if it's None
         if self.remote_host is None:
             self.remote_host = addr[0]
             self.remote_port = addr[1]
 
-        # Make sure we're talking to the same remote host
+        # Ignore invalid ACK packets
         if addr != (self.remote_host, self.remote_port):
-            self.log("Error:  Received response from unexpected remote; ignoring")
+            self.log("Error:  Received response from unexpected remote")
             return None
         else:
             checksum = data[0:10]
@@ -46,30 +59,28 @@ class Receiver:
                     "seq": seq
                 }
 
-    def log(self, message):
-        sys.stderr.write(message + "\n")
-        sys.stderr.flush()
 
+    # Function to receive and process message
     def run(self):
         while True:
             socks = select.select([self.socket], [], [])[0]
             for conn in socks:
                 msg = self.recv(conn)
                 
-                if msg:
-                    
+                if msg:   
                     seq_number = msg['seq']
 
                     if seq_number == self.expected_seq:
-                        # Print out the data to stdout
                         print(msg["data"], end='', flush=True)
                         self.expected_seq += 1
 
+                        # Process buffer message
                         while self.expected_seq in self.buffer:
                             buffer_msg = self.buffer.pop(self.expected_seq)
                             print(buffer_msg["data"], end='', flush=True)
                             self.expected_seq += 1
 
+                    # Buffer out-of-order packets until their turn to be processed.
                     elif seq_number > self.expected_seq:
                         self.buffer[seq_number] = msg
 
