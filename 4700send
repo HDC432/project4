@@ -84,7 +84,7 @@ class Sender:
                     }
                 
 
-    # Main loop to send data and handle acknowledgements
+    # Function to send data and handle acknowledgements
     def run(self):
         EOF = False
         while True:
