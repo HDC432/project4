@@ -52,20 +52,21 @@ class Receiver:
             # Get the checksum, sequence number, and payload.
             checksum = data[0:10]
 
-            extracteddata = zlib.decompress(data[10:])
-            counter = extracteddata[0:2]
-            if counter in self.counters:
-                return None
-            self.counters.add(counter)
-            seq = int.from_bytes(extracteddata[2:4], "big")
-            payload = extracteddata[4:].decode("utf-8")
-            self.log("Received message %d" % (seq))
+            
 
             # Compare received checksum with calculatedChecksum to verify integrity
             calculatedChecksum = hashlib.md5(data[10:]).digest()[:10]
             if checksum != calculatedChecksum:
                 return None
             else:
+                extracteddata = zlib.decompress(data[10:])
+                counter = extracteddata[0:2]
+                if counter in self.counters:
+                    return None
+                self.counters.add(counter)
+                seq = int.from_bytes(extracteddata[2:4], "big")
+                payload = extracteddata[4:].decode("utf-8")
+                self.log("Received message %d" % (seq))
                 return {
                     "data": payload,
                     "seq": seq
