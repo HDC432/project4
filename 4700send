@@ -141,7 +141,7 @@ class Sender:
                 self.congestion_window = 1
                 self.send(self.window[self.base], self.base)
                 if self.base in self.window:
-                    del self.sent_times[self.window[self.base]]
+                    del self.sent_times[self.base]
                 # for seq in range(self.base, self.next_seq_number):
                 #     if seq in self.window:
                 #         
