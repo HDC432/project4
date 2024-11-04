@@ -3,7 +3,7 @@
 import argparse, socket, time, json, select, struct, sys, math, hashlib
 
 # Set maximum data size per packet
-DATA_SIZE = 1470
+DATA_SIZE = 1480
 # Timeout interval for retransmission
 TIMEOUT = 1.0
 
