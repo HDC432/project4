@@ -51,7 +51,6 @@ class Sender:
         checksum = hashlib.md5(message).digest()
         self.socket.sendto(checksum[:10] + message, (self.host, self.port))
         self.window[seq] = message
-        self.sent_times[seq] = time.time()
         self.last_transmit = time.time()
 
 
@@ -103,6 +102,8 @@ class Sender:
                         self.packets_sent -= self.congestion_window
                         self.congestion_window+=1
                 self.send(msg, self.next_seq_number)
+                
+                self.sent_times[self.next_seq_number] = time.time()
                 self.next_seq_number += 1
 
             socks = select.select([self.socket], [], [], 0.1)[0]
@@ -116,24 +117,36 @@ class Sender:
                     self.last_transmit = time.time()
                     if self.congestion_window < self.sshthresh:
                         self.congestion_window +=1
+
+                    seq = ack["seq"]
+                    if seq in self.sent_times:
+                        self.timeout = self.timeout * 0.8 + (time.time() - self.sent_times[seq]) * 0.2
+                        print("New timeout: ", self.timeout)
                 else:
                     self.dup_count += 1
                     if self.dup_count >= 3:
                         self.dup_count = 0
+                        if self.base in self.sent_times:
+                            del self.sent_times[self.base]
                         self.send(self.window[self.base], self.base)
+                        
                         self.sshthresh  = self.congestion_window// 2
                         self.congestion_window = self.sshthresh + 3
 
             # Check for timeout
-            if self.window and ((time.time() - self.last_transmit) > (self.timeout*1.5)):
+            if self.window and ((time.time() - self.last_transmit) > (self.timeout*1.2)):
                 self.log(f"Time out! Resending from sequence number{self.base}")
                 self.last_transmit = time.time()
                 self.sshthresh //= 2
                 self.congestion_window = 1
-                # self.send(self.window[self.base], self.base)
-                for seq in range(self.base, self.next_seq_number):
-                    if seq in self.window:
-                        self.send(self.window[seq], seq)
+                self.send(self.window[self.base], self.base)
+                if self.base in self.window:
+                    del self.sent_times[self.window[self.base]]
+                # for seq in range(self.base, self.next_seq_number):
+                #     if seq in self.window:
+                #         
+                #         self.send(self.window[seq], seq)
+
             
             if EOF and not self.window:
                 self.log("All packets have been acknowledged.")
