@@ -13,7 +13,7 @@ class Sender:
         self.host = host
         self.port = int(port)
         self.counter = 0
-        # self.log("Sender starting up using port %s" % self.port)
+        self.log("Sender starting up using port %s" % self.port)
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.socket.bind(('0.0.0.0', 0))
 
@@ -40,13 +40,14 @@ class Sender:
 
     # Function to print messages to stderr for debugging
     def log(self, message):
-        sys.stderr.write(message + "\n")
-        sys.stderr.flush()
+        pass
+        # sys.stderr.write(message + "\n")
+        # sys.stderr.flush()
 
 
     # Function to send data packets with checksum and sequence number
     def send(self, message, seq):
-        # self.log("Sending message '%d'" % seq)
+        self.log("Sending message '%d'" % seq)
         message = self.counter.to_bytes(2,"big") + message
         self.counter += 1
         # Calculate checksum and add it to packet
@@ -67,19 +68,18 @@ class Sender:
 
         # Ignore invalid ACK packets
         if addr != (self.remote_host, self.remote_port):
-            # self.log("Error:  Received response from unexpected remote")
+            self.log("Error:  Received response from unexpected remote")
             return None
         else:
             data = bytearray(data)
             if (len(data) != 2):
-                # self.log("Error:  Invalid ack, dropping")
+                self.log("Error:  Invalid ack, dropping")
                 return
             else:
                 checksum = data[0]
                 calculatedChecksum = data[1] + 1
                 if (checksum != calculatedChecksum):
-                    # self.log("Error:  Corrupted ack, dropping")
-                    pass
+                    self.log("Error:  Corrupted ack, dropping")
                 else:
                     return{
                         "seq": int(data[1])
@@ -93,7 +93,7 @@ class Sender:
             while not EOF and self.next_seq_number < min(self.window_size,self.congestion_window) + self.base:
                 data = sys.stdin.read(DATA_SIZE)
                 if not data:
-                    # self.log("Done!")
+                    self.log("Done!")
                     EOF = True
                     break
                 
@@ -124,7 +124,7 @@ class Sender:
                     seq = ack["seq"]
                     if seq in self.sent_times:
                         self.timeout = self.timeout * 0.8 + ((time.time() - self.sent_times[seq]) * 0.2)
-                        # self.log("New timeout: %f" % self.timeout)
+                        self.log("New timeout: %f" % self.timeout)
                     self.dup_count = 0
                 else:
                     if self.congestion_window < self.sshthresh:
@@ -141,7 +141,7 @@ class Sender:
 
             # Check for timeout
             if self.window and ((time.time() - self.last_transmit) > (self.timeout*1.2)):
-                # self.log(f"Time out! Resending from sequence number{self.base}")
+                self.log(f"Time out! Resending from sequence number{self.base}")
                 self.last_transmit = time.time()
                 self.sshthresh //= 2
                 self.congestion_window = 1
@@ -156,7 +156,7 @@ class Sender:
 
             
             if EOF and not self.window:
-                # self.log("All packets have been acknowledged.")
+                self.log("All packets have been acknowledged.")
                 sys.exit(0)
 
 
