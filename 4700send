@@ -126,6 +126,8 @@ class Sender:
                         self.log("New timeout: %f" % self.timeout)
                     self.dup_count = 0
                 else:
+                    if self.congestion_window < self.sshthresh:
+                        self.congestion_window +=1
                     self.dup_count += 1
                     if self.dup_count >= 3:
                         self.dup_count = 0
