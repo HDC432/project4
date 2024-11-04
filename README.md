@@ -7,7 +7,6 @@ This project implements a basic reliable transport protocol using UDP with a foc
 - **Sender**: Sends data packets to the receiver, tracks ACKs, and handles retransmissions in case of packet loss or errors.
 - **Receiver**: Listens for incoming data, validates packet integrity, and sends ACKs.
 
-
 ## Features
 
 1. **Environment Setup**:

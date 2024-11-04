@@ -50,7 +50,7 @@ class Sender:
         self.log("Sending message '%d'" % seq)
         message = self.counter.to_bytes(2,"big") + message
         self.counter += 1
-
+        # Each message has a unique counter to detect duplication
         compressedMessage = zlib.compress(message)
         self.log("original data: %d, compressed data %d" % (len(message), len(compressedMessage)))
         # Calculate checksum and add it to packet
@@ -76,15 +76,16 @@ class Sender:
         else:
             data = bytearray(data)
             if (len(data) != 4):
-                self.log("Error:  Invalid ack, dropping")
+                self.log("Error:  Invalid ack, dropping") #acks should always be the same size
                 return
             else:
                 counter = int.from_bytes(data[0:2],"big")
-                if counter in self.counters:
+                if counter in self.counters: #Check for duplicated packets
                     return
                 self.counters.add(counter)
                 checksum = data[2]
-                calculatedChecksum = data[3] + 1
+                calculatedChecksum = data[3] + 1 
+                # Recalculate checksum
                 if (checksum != calculatedChecksum):
                     self.log("Error:  Corrupted ack, dropping")
                 else:
@@ -110,7 +111,7 @@ class Sender:
                 if self.congestion_window >= self.sshthresh:
                     if self.packets_sent >= self.congestion_window:
                         self.packets_sent -= self.congestion_window
-                        self.congestion_window+=1
+                        self.congestion_window+=1 #Do additive increase each time a congestion window worth of data is sent
                 self.send(msg, self.next_seq_number)
                 
                 self.sent_times[self.next_seq_number] = time.time()
@@ -119,7 +120,7 @@ class Sender:
             socks = select.select([self.socket], [], [], 0)[0]
             if self.socket in socks:
                 ack = self.recv(self.socket)
-                if ack and ack["seq"] >= self.base:
+                if ack and ack["seq"] >= self.base: # Check if this is a new ack
                     for seq in list(self.window.keys()):
                         if seq <= ack["seq"]:
                             del self.window[seq]
@@ -136,8 +137,8 @@ class Sender:
                 else:
                     if self.congestion_window < self.sshthresh:
                         self.congestion_window +=1
-                    self.dup_count += 1
-                    if self.dup_count >= 3:
+                    self.dup_count += 1 
+                    if self.dup_count >= 3: #Go into fast retransmit
                         self.dup_count = 0
                         if self.base in self.sent_times:
                             del self.sent_times[self.base]
@@ -152,9 +153,8 @@ class Sender:
                 self.last_transmit = time.time()
                 self.sshthresh //= 2
                 self.congestion_window = 1
-                # self.send(self.window[self.base], self.base)
-                # if self.base in self.sent_times:
-                #     del self.sent_times[self.base]
+
+                #Retransmit packets after timeout
                 for seq in range(self.base, self.next_seq_number):
                     if seq in self.window:
                         if seq in self.sent_times:

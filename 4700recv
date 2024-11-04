@@ -59,9 +59,9 @@ class Receiver:
             if checksum != calculatedChecksum:
                 return None
             else:
-                extracteddata = zlib.decompress(data[10:])
+                extracteddata = zlib.decompress(data[10:]) # Extract data from zlib compression
                 counter = extracteddata[0:2]
-                if counter in self.counters:
+                if counter in self.counters: #Check if this is a duplicated packet
                     return None
                 self.counters.add(counter)
                 seq = int.from_bytes(extracteddata[2:4], "big")
