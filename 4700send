@@ -1,9 +1,9 @@
 #!/usr/bin/env -S python3 -u
-
+import zlib
 import argparse, socket, time, json, select, struct, sys, math, hashlib
 
 # Set maximum data size per packet
-DATA_SIZE = 1480
+DATA_SIZE = 2500
 # Timeout interval for retransmission
 TIMEOUT = 1.0
 
@@ -50,9 +50,12 @@ class Sender:
         self.log("Sending message '%d'" % seq)
         message = self.counter.to_bytes(2,"big") + message
         self.counter += 1
+
+        compressedMessage = zlib.compress(message)
+        self.log("original data: %d, compressed data %d" % (len(message), len(compressedMessage)))
         # Calculate checksum and add it to packet
-        checksum = hashlib.md5(message).digest()
-        self.socket.sendto(checksum[:10] + message, (self.host, self.port))
+        checksum = hashlib.md5(compressedMessage).digest()
+        self.socket.sendto(checksum[:10] + compressedMessage, (self.host, self.port))
         self.window[seq] = message[2:]
         self.last_transmit = time.time()
 

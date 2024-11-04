@@ -1,7 +1,7 @@
 #!/usr/bin/env -S python3 -u
 
 import argparse, socket, time, json, select, struct, sys, math, hashlib
-
+import zlib
 class Receiver:
     def __init__(self):
         # Initialize the socket
@@ -51,12 +51,14 @@ class Receiver:
         else:
             # Get the checksum, sequence number, and payload.
             checksum = data[0:10]
-            counter = data[10:12]
+
+            extracteddata = zlib.decompress(data[10:])
+            counter = extracteddata[0:2]
             if counter in self.counters:
                 return None
             self.counters.add(counter)
-            seq = int.from_bytes(data[12:14], "big")
-            payload = data[14:].decode("utf-8")
+            seq = int.from_bytes(extracteddata[2:4], "big")
+            payload = extracteddata[4:].decode("utf-8")
             self.log("Received message %d" % (seq))
 
             # Compare received checksum with calculatedChecksum to verify integrity
