@@ -49,7 +49,6 @@ class Sender:
         self.log("Sending message '%d'" % seq)
         message = self.counter.to_bytes(2,"big") + message
         self.counter += 1
-        print(self.counter)
         # Calculate checksum and add it to packet
         checksum = hashlib.md5(message).digest()
         self.socket.sendto(checksum[:10] + message, (self.host, self.port))
@@ -124,7 +123,7 @@ class Sender:
                     seq = ack["seq"]
                     if seq in self.sent_times:
                         self.timeout = self.timeout * 0.8 + (time.time() - self.sent_times[seq]) * 0.2
-                        print("New timeout: ", self.timeout)
+                        self.log("New timeout: %d" % self.timeout)
                 else:
                     self.dup_count += 1
                     if self.dup_count >= 3:

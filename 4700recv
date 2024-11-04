@@ -51,7 +51,6 @@ class Receiver:
             if counter in self.counters:
                 return None
             self.counters.add(counter)
-            self.log("receiving %d" % int.from_bytes(counter, "big"))
             seq = int.from_bytes(data[12:14], "big")
             payload = data[14:].decode("utf-8")
             # self.log("Received message %d %s" % (seq,payload))
