@@ -17,6 +17,7 @@ class Receiver:
         # Initialize sequence and buffer for received data
         self.expected_seq = 1
         self.buffer = {}
+        
 
 
      # Function to print messages to stderr for debugging
@@ -70,7 +71,7 @@ class Receiver:
     # Function to receive and process message
     def run(self):
         while True:
-            socks = select.select([self.socket], [], [])[0]
+            socks = select.select([self.socket], [], [], 0.1)[0]
             for conn in socks:
                 msg = self.recv(conn)
                 

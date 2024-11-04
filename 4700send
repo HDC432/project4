@@ -29,6 +29,7 @@ class Sender:
         # Code for congestion control
         self.congestion_window = 1
         self.sshthresh = 100
+        self.fast_recovery = False
         self.dup_count = 0
 
         # Initialize remote host's address and port
@@ -112,6 +113,9 @@ class Sender:
             if self.socket in socks:
                 ack = self.recv(self.socket)
                 if ack and ack["seq"] >= self.base:
+                    if self.fast_recovery:
+                        self.fast_recovery = False
+                        # self.congestion_window = self.sshthresh
                     for seq in list(self.window.keys()):
                         if seq <= ack["seq"]:
                             del self.window[seq]
@@ -126,17 +130,21 @@ class Sender:
                         self.log("New timeout: %f" % self.timeout)
                     self.dup_count = 0
                 else:
-                    if self.congestion_window < self.sshthresh:
+                    if self.fast_recovery:
                         self.congestion_window +=1
-                    # self.dup_count += 1
-                    # if self.dup_count >= 3:
-                    #     self.dup_count = 0
-                    #     if self.base in self.sent_times:
-                    #         del self.sent_times[self.base]
-                    #     self.send(self.window[self.base], self.base)
-                    #     self.log("fast retransmit activated")
-                    #     self.sshthresh  = self.congestion_window// 2
-                    #     self.congestion_window = self.sshthresh + 3
+                    else:
+                        if self.congestion_window < self.sshthresh:
+                            self.congestion_window +=1
+                        self.dup_count += 1
+                        if self.dup_count >= 3:
+                            self.fast_recovery = True
+                            self.dup_count = 0
+                            if self.base in self.sent_times:
+                                del self.sent_times[self.base]
+                            self.send(self.window[self.base], self.base)
+                            self.log("fast retransmit activated")
+                            self.sshthresh  = self.congestion_window// 2
+                            self.congestion_window = self.sshthresh + 3
 
             # Check for timeout
             if self.window and ((time.time() - self.last_transmit) > (self.timeout*1.2)):
