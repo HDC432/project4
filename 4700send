@@ -13,6 +13,7 @@ class Sender:
         self.host = host
         self.port = int(port)
         self.counter = 0
+        self.counters = set()
         self.log("Sender starting up using port %s" % self.port)
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.socket.bind(('0.0.0.0', 0))
@@ -71,17 +72,21 @@ class Sender:
             return None
         else:
             data = bytearray(data)
-            if (len(data) != 2):
+            if (len(data) != 4):
                 self.log("Error:  Invalid ack, dropping")
                 return
             else:
-                checksum = data[0]
-                calculatedChecksum = data[1] + 1
+                counter = int.from_bytes(data[0:2],"big")
+                if counter in self.counters:
+                    return
+                self.counters.add(counter)
+                checksum = data[2]
+                calculatedChecksum = data[3] + 1
                 if (checksum != calculatedChecksum):
                     self.log("Error:  Corrupted ack, dropping")
                 else:
                     return{
-                        "seq": int(data[1])
+                        "seq": int(data[3])
                     }
                 
 
@@ -102,7 +107,7 @@ class Sender:
                 if self.congestion_window >= self.sshthresh:
                     if self.packets_sent >= self.congestion_window:
                         self.packets_sent -= self.congestion_window
-                        self.congestion_window+=1/self.congestion_window
+                        self.congestion_window+=1
                 self.send(msg, self.next_seq_number)
                 
                 self.sent_times[self.next_seq_number] = time.time()

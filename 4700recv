@@ -14,6 +14,8 @@ class Receiver:
         self.remote_host = None
         self.remote_port = None
 
+        self.counter = 0
+
         # Initialize sequence and buffer for received data
         self.expected_seq = 1
         self.buffer = {}
@@ -29,7 +31,8 @@ class Receiver:
     # Function to send ACK message to sender
     def send(self, message):
         # self.log("Sent message %s" % message)
-        self.socket.sendto(message, (self.remote_host, self.remote_port))
+        self.socket.sendto(self.counter.to_bytes(2,"big") + message, (self.remote_host, self.remote_port))
+        self.counter += 1
 
 
     # Function to receive data from a certain socket
@@ -71,7 +74,7 @@ class Receiver:
     # Function to receive and process message
     def run(self):
         while True:
-            socks = select.select([self.socket], [], [], 0.1)[0]
+            socks = select.select([self.socket], [], [])[0]
             for conn in socks:
                 msg = self.recv(conn)
                 
