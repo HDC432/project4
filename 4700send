@@ -122,8 +122,9 @@ class Sender:
 
                     seq = ack["seq"]
                     if seq in self.sent_times:
-                        self.timeout = self.timeout * 0.8 + (time.time() - self.sent_times[seq]) * 0.2
-                        self.log("New timeout: %d" % self.timeout)
+                        self.timeout = self.timeout * 0.8 + ((time.time() - self.sent_times[seq]) * 0.2)
+                        self.log("New timeout: %f" % self.timeout)
+                    self.dup_count = 0
                 else:
                     self.dup_count += 1
                     if self.dup_count >= 3:
