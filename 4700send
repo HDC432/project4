@@ -40,9 +40,8 @@ class Sender:
 
     # Function to print messages to stderr for debugging
     def log(self, message):
-        pass
-        # sys.stderr.write(message + "\n")
-        # sys.stderr.flush()
+        sys.stderr.write(message + "\n")
+        sys.stderr.flush()
 
 
     # Function to send data packets with checksum and sequence number
@@ -129,15 +128,15 @@ class Sender:
                 else:
                     if self.congestion_window < self.sshthresh:
                         self.congestion_window +=1
-                    self.dup_count += 1
-                    if self.dup_count >= 3:
-                        self.dup_count = 0
-                        if self.base in self.sent_times:
-                            del self.sent_times[self.base]
-                        self.send(self.window[self.base], self.base)
-                        
-                        self.sshthresh  = self.congestion_window// 2
-                        self.congestion_window = self.sshthresh + 3
+                    # self.dup_count += 1
+                    # if self.dup_count >= 3:
+                    #     self.dup_count = 0
+                    #     if self.base in self.sent_times:
+                    #         del self.sent_times[self.base]
+                    #     self.send(self.window[self.base], self.base)
+                    #     self.log("fast retransmit activated")
+                    #     self.sshthresh  = self.congestion_window// 2
+                    #     self.congestion_window = self.sshthresh + 3
 
             # Check for timeout
             if self.window and ((time.time() - self.last_transmit) > (self.timeout*1.2)):

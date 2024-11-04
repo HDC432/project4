@@ -53,7 +53,7 @@ class Receiver:
             self.counters.add(counter)
             seq = int.from_bytes(data[12:14], "big")
             payload = data[14:].decode("utf-8")
-            # self.log("Received message %d" % (seq))
+            self.log("Received message %d" % (seq))
 
             # Compare received checksum with calculatedChecksum to verify integrity
             calculatedChecksum = hashlib.md5(data[10:]).digest()[:10]
@@ -94,7 +94,7 @@ class Receiver:
                     # Always send back an ack
                     seq = self.expected_seq-1
                     self.send(bytearray([seq+1, seq]))
-                    # self.log("Sent ack %d" % seq)
+                    self.log("Sent ack %d" % seq)
 
 
 if __name__ == "__main__":
