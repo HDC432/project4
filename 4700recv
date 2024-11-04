@@ -15,7 +15,7 @@ class Receiver:
         self.remote_port = None
 
         # Initialize sequence and buffer for received data
-        self.expected_seq = 0
+        self.expected_seq = 1
         self.buffer = {}
 
 
@@ -93,6 +93,7 @@ class Receiver:
 
                     # Always send back an ack
                     seq = self.expected_seq-1
+                    self.log("%d" % seq)
                     self.send(bytearray([seq+1, seq]))
                     self.log("Sent ack %d" % seq)
 
