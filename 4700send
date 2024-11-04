@@ -159,14 +159,14 @@ class Sender:
                 self.congestion_window = 1
                 self.dup_count = 0
                 self.fastrecovery = False
-                # self.send(self.window[self.base], self.base)
-                # if self.base in self.sent_times:
-                #     del self.sent_times[self.base]
-                for seq in range(self.base, self.next_seq_number):
-                    if seq in self.window:
-                        if seq in self.sent_times:
-                            del self.sent_times[seq]
-                        self.send(self.window[seq], seq)
+                self.send(self.window[self.base], self.base)
+                if self.base in self.sent_times:
+                    del self.sent_times[self.base]
+                # for seq in range(self.base, self.next_seq_number):
+                #     if seq in self.window:
+                #         if seq in self.sent_times:
+                #             del self.sent_times[seq]
+                #         self.send(self.window[seq], seq)
 
             
             if EOF and not self.window:
