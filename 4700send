@@ -27,7 +27,7 @@ class Sender:
         self.packets_sent = 0
 
         # Code for congestion control
-        self.congestion_window = 2
+        self.congestion_window = 1
         self.sshthresh = 100
         self.dup_count = 0
 
