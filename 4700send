@@ -115,7 +115,7 @@ class Sender:
                 if ack and ack["seq"] >= self.base:
                     if self.fast_recovery:
                         self.fast_recovery = False
-                        # self.congestion_window = self.sshthresh
+                        self.congestion_window = self.sshthresh
                     for seq in list(self.window.keys()):
                         if seq <= ack["seq"]:
                             del self.window[seq]
